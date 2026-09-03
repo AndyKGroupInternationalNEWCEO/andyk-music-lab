@@ -6,8 +6,8 @@ import { useState } from "react";
 export type WaitlistPlan = "single" | "studio" | "pro";
 
 const PLAN_LABELS: Record<WaitlistPlan, string> = {
-  single: "Single Session (£49 one-time)",
-  studio: "Studio Pass (£29/month)",
+  single: "Single Session (£79 one-time)",
+  studio: "Studio Pass (£49/month)",
   pro:    "Pro Pass (£199/year)",
 };
 
@@ -148,7 +148,7 @@ export default function WaitlistForm({ initialPlan = "studio", onClose, onSucces
                       cursor: "pointer", transition: "all 0.15s ease",
                     }}
                   >
-                    {p === "single" ? "£49 one-time" : p === "studio" ? "£29/mo" : "£199/yr"}
+                    {p === "single" ? "£79 one-time" : p === "studio" ? "£49/mo" : "£199/yr"}
                   </button>
                 ))}
               </div>

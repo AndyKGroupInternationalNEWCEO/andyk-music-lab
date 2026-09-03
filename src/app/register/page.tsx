@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Suspense } from "react";
 
 const inputStyle: React.CSSProperties = {
@@ -31,14 +29,13 @@ const labelStyle: React.CSSProperties = {
 };
 
 function RegisterForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [gdpr, setGdpr] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,11 +43,15 @@ function RegisterForm() {
     setLoading(true);
     setError("");
 
-    // Create user + profile via API route (uses service role)
+    const emailLower = email.trim().toLowerCase();
+
+    // Create user + profile via API route (uses service role). The account is created
+    // unconfirmed — access is only linked once the confirmation email is clicked, so a
+    // paid plan can never be claimed by registering with someone else's email address.
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), password, full_name: fullName.trim(), gdpr_consent: true }),
+      body: JSON.stringify({ email: emailLower, password, full_name: fullName.trim(), gdpr_consent: true }),
     });
 
     if (!res.ok) {
@@ -60,22 +61,31 @@ function RegisterForm() {
       return;
     }
 
-    // Sign in after successful registration
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
-
-    if (signInError) {
-      setError("Account created. Please sign in.");
-      router.push("/login");
-    } else {
-      const next = searchParams.get("next") ?? "/client";
-      router.push(next);
-      router.refresh();
-    }
+    setSubmittedEmail(emailLower);
+    setLoading(false);
   };
+
+  if (submittedEmail) {
+    return (
+      <div style={{
+        minHeight: "calc(100vh - 64px)", background: "#ffffff",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px",
+      }}>
+        <div style={{ width: "100%", maxWidth: 400, textAlign: "center" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#8a8a8a", marginBottom: 20 }}>
+            Andy&apos;K Music Lab
+          </p>
+          <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.2rem)", fontWeight: 700, color: "#111111", lineHeight: 1.2, margin: "0 0 16px", fontFamily: "var(--font-sans)" }}>
+            Check your email
+          </h1>
+          <p style={{ fontSize: 14, color: "#525252", lineHeight: 1.7, fontFamily: "var(--font-sans)" }}>
+            We sent a confirmation link to <strong>{submittedEmail}</strong>. Click it to activate your account
+            {" "}— if you already paid, your access links automatically as soon as you confirm.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

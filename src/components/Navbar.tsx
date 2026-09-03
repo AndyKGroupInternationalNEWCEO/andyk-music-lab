@@ -63,8 +63,8 @@ export default function Navbar() {
 
         {/* Center nav — desktop */}
         <div className="hidden md:flex items-center gap-1">
-          <a href="/#tools" className="nav-link">{t.nav.tools}</a>
-          <a href="/#pricing" className="nav-link">{t.nav.pricing}</a>
+          <Link href="/#tools" className="nav-link">{t.nav.tools}</Link>
+          <Link href="/#pricing" className="nav-link">{t.nav.pricing}</Link>
           <a href="https://djandykofficial.com" target="_blank" rel="noopener noreferrer" className="nav-link">{t.nav.about}</a>
         </div>
 
@@ -124,8 +124,8 @@ export default function Navbar() {
       {/* Mobile dropdown */}
       {menuOpen && (
         <div className="md:hidden mobile-nav-menu">
-          <a href="/#tools" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t.nav.tools}</a>
-          <a href="/#pricing" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t.nav.pricing}</a>
+          <Link href="/#tools" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t.nav.tools}</Link>
+          <Link href="/#pricing" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t.nav.pricing}</Link>
           <a href="https://djandykofficial.com" target="_blank" rel="noopener noreferrer" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t.nav.about} ↗</a>
           <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "6px 12px" }} />
 

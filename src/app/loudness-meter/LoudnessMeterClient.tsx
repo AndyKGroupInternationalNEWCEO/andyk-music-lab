@@ -11,6 +11,8 @@ const PLATFORM_TARGETS = [
 
 const S = { mono: { fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#a3a3a3" } };
 
+const MAX_FILE_BYTES = 250 * 1024 * 1024; // 250MB, consistent with the Audio Converter tool
+
 function lufsToY(lufs: number, h: number, minL = -40, maxL = 0): number {
   return h - ((lufs - minL) / (maxL - minL)) * h;
 }
@@ -63,7 +65,6 @@ function MeterBar({ value, label }: { value: number; label: string }) {
 
 export default function LoudnessMeterClient() {
   const [isAdmin] = useState(() => { if (typeof window==="undefined") return false; try { return localStorage.getItem("andyk_lab_admin")==="true"; } catch { return false; } });
-  if (!isAdmin) { if (typeof window!=="undefined") window.location.replace("/admin"); return null; }
 
   const [mode, setMode] = useState<"mic"|"file">("file");
   const [momentary, setMomentary] = useState(-70);
@@ -73,6 +74,7 @@ export default function LoudnessMeterClient() {
   const [running, setRunning] = useState(false);
   const [fileStats, setFileStats] = useState<{momentary:number;shortTerm:number;integrated:number}|null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext|null>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -113,21 +115,37 @@ export default function LoudnessMeterClient() {
       };
       src.connect(proc); proc.connect(ctx.destination);
       setRunning(true); integratedBlocks.current = []; shortTermBlocks.current = [];
-    } catch { alert("Microphone access denied."); }
+    } catch { setError("Microphone access denied. Please allow microphone access and try again."); }
   }, []);
 
+  // Release the mic and AudioContext if the user navigates away while the meter is running.
+  useEffect(() => () => stopMic(), [stopMic]);
+
   const handleFile = useCallback(async (f: File) => {
+    setError(null);
+    if (!f.type.match(/audio\//) && !f.name.match(/\.(mp3|wav|flac|ogg|aac|m4a)$/i)) {
+      setError("Please upload an MP3, WAV, FLAC, OGG, AAC or M4A file.");
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setError("File is too large (max 250MB). Please upload a smaller file.");
+      return;
+    }
     setLoading(true); setFileStats(null);
+    let ctx: AudioContext | null = null;
     try {
       const ab = await f.arrayBuffer();
-      const ctx = new AudioContext();
+      ctx = new AudioContext();
       const buf = await ctx.decodeAudioData(ab);
-      await ctx.close();
       const stats = analyzeFileLUFS(buf);
       setFileStats(stats);
       setMomentary(stats.momentary); setShortTerm(stats.shortTerm); setIntegrated(stats.integrated);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      setError("Failed to decode audio. Please try an MP3 or WAV file.");
+    } finally {
+      await ctx?.close().catch(() => {});
+      setLoading(false);
+    }
   }, []);
 
   // Draw history graph
@@ -170,7 +188,7 @@ export default function LoudnessMeterClient() {
               <span className="head-word-serif serif-accent">Loudness</span>{" "}
               <span className="head-word-bold">Meter</span>
             </h1>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>
+            {isAdmin && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>}
           </div>
           <p style={{ fontSize: 14, color: "var(--color-muted)", lineHeight: 1.65 }}>Real-time LUFS metering from microphone or file. Momentary, short-term, and integrated LUFS with platform targets.</p>
         </div>
@@ -202,6 +220,7 @@ export default function LoudnessMeterClient() {
               {running ? "■ Stop Meter" : "▶ Start Microphone Meter"}
             </button>
           )}
+          {error && <p style={{ marginTop: 12, fontSize: 12, color: "#ef4444" }}>{error}</p>}
         </div>
 
         {/* Meters */}

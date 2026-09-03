@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { paymentFailedHtml } from "@/lib/email";
+import { PLAN_TOOLS, planExpiry } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,22 @@ function verifySignature(rawBody: string, sigHeader: string, secret: string): bo
   } catch { return false; }
 }
 
+// Records this webhook delivery in webhook_events (id = Revolut's own event id when
+// present). Returns false if we've already processed this exact delivery, so the
+// caller can skip re-applying it — this is what makes SUBSCRIPTION_RENEWED (an
+// additive expiry extension, not an idempotent absolute-value write) safe against
+// Revolut's at-least-once retry delivery.
+async function claimEvent(eventId: string, eventType: string): Promise<boolean> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/webhook_events`, {
+    method: "POST",
+    headers: { ...sbHeaders(), Prefer: "resolution=ignore-duplicates,return=representation" },
+    body: JSON.stringify({ id: eventId, event_type: eventType }),
+  });
+  if (!res.ok) return true; // fail open on infra errors — better to risk a duplicate than drop a real payment event
+  const rows: unknown[] = await res.json().catch(() => []);
+  return rows.length > 0; // empty array => the row already existed (ignore-duplicates) => already processed
+}
+
 async function sendEmail(to: string, subject: string, html: string) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
@@ -32,27 +49,6 @@ async function sendEmail(to: string, subject: string, html: string) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ from: FROM, to, subject, html }),
   }).catch(err => console.error("[webhook] email error", err));
-}
-
-const PLAN_TOOLS: Record<string, string[]> = {
-  single:          ["mastering"],
-  studio:          ["mastering","bpm","planner","track-comparator","chord-generator","metronome","loudness-meter","stem-splitter"],
-  pro:             ["mastering","bpm","planner","track-comparator","chord-generator","metronome","loudness-meter","stem-splitter"],
-  tool_mastering:  ["mastering"],
-  tool_bpm:        ["bpm"],
-  tool_planner:    ["planner"],
-  tool_comparator: ["track-comparator"],
-  tool_chord:      ["chord-generator"],
-  tool_metronome:  ["metronome"],
-  tool_loudness:   ["loudness-meter"],
-  tool_stems:      ["stem-splitter"],
-};
-
-function planExpiry(plan: string, fromDate = Date.now()): string | null {
-  if (plan === "pro")    return new Date(fromDate + 365 * 24 * 60 * 60 * 1000).toISOString();
-  if (plan === "studio" || plan.startsWith("tool_"))
-                         return new Date(fromDate +  30 * 24 * 60 * 60 * 1000).toISOString();
-  return null;
 }
 
 function extractEmail(data: Record<string, unknown>): string {
@@ -83,6 +79,26 @@ async function handleOrderCompleted(order: Record<string, unknown>, orderId: str
     body: JSON.stringify({ paid: true, paid_at: now, revolut_order_id: orderId }),
   });
 
+  // Upsert pending_access — this is the source of truth that registration/login linking
+  // reads from, and it must not depend on the customer's browser successfully calling
+  // /api/notify/payment-success after the Revolut redirect (that call can be lost to a
+  // closed tab, a cleared session, or a network error). The webhook is guaranteed
+  // delivery from Revolut, so it must independently guarantee this row exists.
+  if (plan && orderId) {
+    await fetch(`${SUPABASE_URL}/rest/v1/pending_access?on_conflict=order_id`, {
+      method: "POST",
+      headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        order_id: orderId,
+        plan,
+        status: "paid",
+        access_granted: false,
+        email,
+        updated_at: now,
+      }),
+    });
+  }
+
   // Update existing profile if registered
   const profilePatch = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?email=eq.${encodeURIComponent(email)}`,
@@ -101,15 +117,18 @@ async function handleOrderCompleted(order: Record<string, unknown>, orderId: str
     const updated: { id: string }[] = await profilePatch.json().catch(() => []);
     if (updated.length > 0 && plan && PLAN_TOOLS[plan]) {
       const userId = updated[0].id;
-      await fetch(`${SUPABASE_URL}/rest/v1/tool_access?user_id=eq.${userId}`, {
-        method: "DELETE", headers: sbHeaders(),
-      });
-      await fetch(`${SUPABASE_URL}/rest/v1/tool_access`, {
+      await fetch(`${SUPABASE_URL}/rest/v1/tool_access?on_conflict=user_id,tool_name`, {
         method: "POST",
-        headers: { ...sbHeaders(), Prefer: "return=minimal" },
+        headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify(PLAN_TOOLS[plan].map(tool_name => ({
           user_id: userId, tool_name, granted_at: now, expires_at: planExpiresAt,
         }))),
+      });
+      // Mark pending_access granted immediately too, since the profile already existed.
+      await fetch(`${SUPABASE_URL}/rest/v1/pending_access?order_id=eq.${encodeURIComponent(orderId)}`, {
+        method: "PATCH",
+        headers: { ...sbHeaders(), Prefer: "return=minimal" },
+        body: JSON.stringify({ access_granted: true, updated_at: now }),
       });
     }
   }
@@ -120,8 +139,6 @@ async function handleSubscriptionRenewed(payload: Record<string, unknown>) {
   const order = (payload.order ?? payload) as Record<string, unknown>;
   const email = extractEmail(order);
   if (!email) { console.error("[webhook] SUBSCRIPTION_RENEWED: no email"); return; }
-
-  const now = new Date().toISOString();
 
   // Get current plan to calculate new expiry
   const profileRes = await fetch(
@@ -202,12 +219,17 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const webhookSecret = process.env.REVOLUT_WEBHOOK_SECRET;
 
-  if (webhookSecret) {
-    const sigHeader = req.headers.get("Revolut-Signature") ?? "";
-    if (!verifySignature(rawBody, sigHeader, webhookSecret)) {
-      console.error("[revolut/webhook] signature mismatch");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // Fail CLOSED: an unconfigured secret must never mean "accept unsigned requests".
+  // Without this, anyone could POST a forged ORDER_COMPLETED event and grant themselves
+  // free tool access for any email address.
+  if (!webhookSecret) {
+    console.error("[revolut/webhook] REVOLUT_WEBHOOK_SECRET is not configured — rejecting");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+  }
+  const sigHeader = req.headers.get("Revolut-Signature") ?? "";
+  if (!verifySignature(rawBody, sigHeader, webhookSecret)) {
+    console.error("[revolut/webhook] signature mismatch");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let payload: Record<string, unknown>;
@@ -216,13 +238,21 @@ export async function POST(req: NextRequest) {
 
   const event = payload.event as string | undefined;
   const order = (payload.order ?? {}) as Record<string, unknown>;
+  const orderId = (order.id ?? payload.order_id ?? "") as string;
+
+  // Idempotency guard — Revolut (like most webhook providers) delivers at-least-once
+  // and will retry on timeout/5xx, so the exact same event can arrive more than once.
+  const eventId = (payload.event_id as string) || (payload.id as string) || `${event ?? "unknown"}:${orderId}`;
+  const firstDelivery = await claimEvent(eventId, event ?? "unknown");
+  if (!firstDelivery) {
+    console.log("[revolut/webhook] duplicate delivery ignored:", eventId);
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
 
   switch (event) {
-    case "ORDER_COMPLETED": {
-      const orderId = (order.id ?? payload.order_id ?? "") as string;
+    case "ORDER_COMPLETED":
       await handleOrderCompleted(order, orderId);
       break;
-    }
     case "SUBSCRIPTION_RENEWED":
       await handleSubscriptionRenewed(payload);
       break;

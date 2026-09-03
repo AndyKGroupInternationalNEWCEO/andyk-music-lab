@@ -102,17 +102,28 @@ function StemCard({ stem, onDownload }: { stem: StemResult; onDownload: () => vo
 
 const S = { mono: { fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#a3a3a3" } };
 
+const MAX_FILE_BYTES = 250 * 1024 * 1024; // 250MB, consistent with the Audio Converter tool
+
+function revokeStems(stems: StemResult[]) {
+  stems.forEach(s => URL.revokeObjectURL(s.url));
+}
+
 export default function StemSplitterClient() {
   const [isAdmin] = useState(() => { if (typeof window==="undefined") return false; try { return localStorage.getItem("andyk_lab_admin")==="true"; } catch { return false; } });
-  if (!isAdmin) { if (typeof window!=="undefined") window.location.replace("/admin"); return null; }
 
   const [file, setFile] = useState<File|null>(null);
   const [stems, setStems] = useState<StemResult[]>([]);
   const [stage, setStage] = useState<string|null>(null);
   const [error, setError] = useState<string|null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const stemsRef = useRef<StemResult[]>([]);
+  useEffect(() => { stemsRef.current = stems; }, [stems]);
+
+  // Revoke any outstanding stem blob URLs on unmount
+  useEffect(() => () => revokeStems(stemsRef.current), []);
 
   const process = useCallback(async (f: File) => {
+    revokeStems(stemsRef.current);
     setStage("Decoding…"); setStems([]); setError(null);
     try {
       const ab = await f.arrayBuffer();
@@ -136,11 +147,24 @@ export default function StemSplitterClient() {
         results.push({ name: def.name, url, buffer: rendered, color: def.color });
       }
       setStems(results);
-    } catch { setError("Failed to process audio."); }
+    } catch { setError("Failed to process audio. Please try an MP3 or WAV file."); }
     finally { setStage(null); }
   }, []);
 
-  const handleFile = (f: File) => { setFile(f); process(f); };
+  const handleFile = (f: File) => {
+    setError(null);
+    if (!f.type.match(/audio\//) && !f.name.match(/\.(mp3|wav|flac|ogg|aac|m4a)$/i)) {
+      setError("Please upload an MP3, WAV, FLAC, OGG, AAC or M4A file.");
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setError("File is too large (max 250MB). Please upload a smaller file.");
+      return;
+    }
+    setFile(f); process(f);
+  };
+
+  const clear = () => { revokeStems(stemsRef.current); setStems([]); setFile(null); };
 
   const download = (stem: StemResult) => {
     const a = document.createElement("a");
@@ -161,7 +185,7 @@ export default function StemSplitterClient() {
               <span className="head-word-serif serif-accent">Stem</span>{" "}
               <span className="head-word-bold">Splitter</span>
             </h1>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>
+            {isAdmin && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>}
           </div>
           <p style={{ fontSize: 14, color: "var(--color-muted)", lineHeight: 1.65 }}>Split your track into Bass, Mids, and Highs stems using browser-based frequency filtering.</p>
           <div style={{ display: "inline-block", marginTop: 8, padding: "4px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 6, fontSize: 11, color: "#92400e", fontFamily: "var(--font-mono)" }}>
@@ -202,7 +226,7 @@ export default function StemSplitterClient() {
               <div>
                 <div style={{ ...S.mono, marginBottom: 4 }}>Stems — {file?.name.replace(/\.[^.]+$/,"")}</div>
               </div>
-              <button onClick={() => { setStems([]); setFile(null); }} style={{ fontSize: 12, color: "var(--color-muted-2)", background: "none", border: "none", cursor: "pointer" }}>
+              <button onClick={clear} style={{ fontSize: 12, color: "var(--color-muted-2)", background: "none", border: "none", cursor: "pointer" }}>
                 ✕ Clear
               </button>
             </div>

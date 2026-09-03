@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -29,11 +29,16 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    searchParams.get("confirm_error") === "1"
+      ? "That confirmation link is invalid or has expired. Please sign in, or register again to get a new one."
+      : ""
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,7 +53,11 @@ export default function LoginPage() {
     });
 
     if (authError) {
-      setError("Invalid email or password.");
+      setError(
+        /confirm/i.test(authError.message)
+          ? "Please confirm your email address first — check your inbox for the confirmation link."
+          : "Invalid email or password."
+      );
       setLoading(false);
     } else {
       // Check for unlinked pending payment access and activate it
@@ -145,5 +154,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

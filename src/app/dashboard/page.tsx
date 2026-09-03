@@ -189,6 +189,8 @@ export default function DashboardPage() {
 
   const [edRequests, setEdRequests] = useState<EdRequest[]>([]);
   const [edLoading, setEdLoading] = useState(false);
+  const [edActingId, setEdActingId] = useState<string | null>(null);
+  const [edPlanChoice, setEdPlanChoice] = useState<Record<string, string>>({});
 
   const [genEmail, setGenEmail] = useState("");
   const [genPercent, setGenPercent] = useState(40);
@@ -278,6 +280,27 @@ export default function DashboardPage() {
       setGenResult({ error: "Network error" });
     } finally {
       setGenLoading(false);
+    }
+  }
+
+  async function actOnEdRequest(id: string, action: "approve" | "reject") {
+    setEdActingId(id);
+    try {
+      const res = await fetch(`/api/admin/education/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, plan: edPlanChoice[id] ?? "studio" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEdRequests(prev => prev.map(r => r.id === id ? { ...r, status: data.status } : r));
+      } else {
+        alert(data.error ?? "Something went wrong");
+      }
+    } catch {
+      alert("Network error");
+    } finally {
+      setEdActingId(null);
     }
   }
 
@@ -689,16 +712,18 @@ export default function DashboardPage() {
             <p style={{ fontFamily: mono, fontSize: 12, color: "#a3a3a3" }}>No requests yet.</p>
           ) : (
             <div style={{ border: "1px solid #e5e5e5", overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 100px 1.4fr 70px 80px 110px", gap: 0, background: "#f5f5f5", borderBottom: "1px solid #e5e5e5", padding: "7px 14px" }}>
-                {["Name", "Type", "Email", "Students", "Status", "Date"].map(h => (
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 90px 1.2fr 60px 70px 90px 210px", gap: 0, background: "#f5f5f5", borderBottom: "1px solid #e5e5e5", padding: "7px 14px" }}>
+                {["Name", "Type", "Email", "Students", "Status", "Date", "Actions"].map(h => (
                   <span key={h} style={tableHeader}>{h}</span>
                 ))}
               </div>
-              {edRequests.map((r, i) => (
+              {edRequests.map((r, i) => {
+                const actionable = r.status === "new" || r.status === "reviewed";
+                return (
                 <div
                   key={r.id}
                   title={r.message ?? undefined}
-                  style={{ display: "grid", gridTemplateColumns: "1.4fr 100px 1.4fr 70px 80px 110px", gap: 0, padding: "10px 14px", borderBottom: i < edRequests.length - 1 ? "1px solid #f0f0f0" : "none", alignItems: "center" }}
+                  style={{ display: "grid", gridTemplateColumns: "1.2fr 90px 1.2fr 60px 70px 90px 210px", gap: 0, padding: "10px 14px", borderBottom: i < edRequests.length - 1 ? "1px solid #f0f0f0" : "none", alignItems: "center" }}
                 >
                   <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#111111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {r.name}
@@ -712,8 +737,38 @@ export default function DashboardPage() {
                   <span style={{ fontFamily: mono, fontSize: 10, color: "#a3a3a3" }}>
                     {new Date(r.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                   </span>
+                  {actionable ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <select
+                        value={edPlanChoice[r.id] ?? "studio"}
+                        onChange={e => setEdPlanChoice(prev => ({ ...prev, [r.id]: e.target.value }))}
+                        style={{ fontFamily: mono, fontSize: 10, padding: "5px 4px", border: "1px solid #e5e5e5" }}
+                      >
+                        <option value="studio">Studio</option>
+                        <option value="pro">Pro</option>
+                        <option value="single">Single</option>
+                      </select>
+                      <button
+                        disabled={edActingId === r.id}
+                        onClick={() => actOnEdRequest(r.id, "approve")}
+                        style={{ ...btn("primary"), padding: "5px 9px", fontSize: 10 }}
+                      >
+                        {edActingId === r.id ? "…" : "Approve"}
+                      </button>
+                      <button
+                        disabled={edActingId === r.id}
+                        onClick={() => actOnEdRequest(r.id, "reject")}
+                        style={{ ...btn("outline"), padding: "5px 9px", fontSize: 10 }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontFamily: mono, fontSize: 10, color: "#a3a3a3" }}>—</span>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

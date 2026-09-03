@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import HowItWorks from "@/components/HowItWorks";
 
 const PLANNER_STEPS = [
@@ -176,10 +176,6 @@ export default function PlannerClient() {
     try { return localStorage.getItem("andyk_lab_admin") === "true"; } catch { return false; }
   });
 
-  if (!isAdmin) {
-    if (typeof window !== "undefined") window.location.replace("/admin");
-    return null;
-  }
 
   const [tracks, setTracks] = useState<Track[]>([emptyTrack(), emptyTrack(), emptyTrack()]);
   const [playlist, setPlaylist] = useState<Track[] | null>(null);

@@ -380,7 +380,9 @@ export default function HomeClient() {
       const data = await res.json();
       if (data.checkout_url) {
         if (data.order_id) {
-          try { sessionStorage.setItem("andyk_order_id", data.order_id); } catch { /* ignore */ }
+          // localStorage — must survive the redirect to Revolut's checkout and back,
+          // including if that lands in a new tab/context (some mobile browsers do this).
+          try { localStorage.setItem("andyk_order_id", data.order_id); } catch { /* ignore */ }
         }
         window.location.href = data.checkout_url;
       } else {

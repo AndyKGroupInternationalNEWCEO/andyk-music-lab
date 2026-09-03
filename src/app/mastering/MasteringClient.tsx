@@ -17,6 +17,7 @@ const MASTERING_STEPS = [
 ];
 
 // ── Constants ──────────────────────────────────────────────────────────────
+const MAX_FILE_BYTES = 250 * 1024 * 1024; // 250MB, consistent with the Audio Converter tool
 const PLATFORM_LUFS = { spotify: -14, apple: -16, youtube: -14 } as const;
 const INTENSITY_OFFSET = { low: -4, medium: 0, high: 3 } as const;
 const STEREO_FACTOR = { narrow: 0.45, standard: 1.0, wide: 1.75 } as const;
@@ -725,10 +726,6 @@ export default function MasteringClient() {
     try { return localStorage.getItem("andyk_lab_admin") === "true"; } catch { return false; }
   });
 
-  if (!isAdmin) {
-    if (typeof window !== "undefined") window.location.replace("/admin");
-    return null;
-  }
 
   // Batch state
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
@@ -744,6 +741,11 @@ export default function MasteringClient() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // Track the latest blob URLs in refs so they can be revoked from callbacks/unmount
+  // without depending on stale useCallback closures.
+  const originalUrlRef = useRef<string | null>(null);
+  const resultUrlRef = useRef<string | null>(null);
 
   // Reference track
   const [refFile, setRefFile] = useState<File | null>(null);
@@ -856,17 +858,29 @@ export default function MasteringClient() {
 
   const fmt = (s: number) => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
+  // Revoke any blob URLs still outstanding when the tool unmounts (e.g. navigating away).
+  useEffect(() => () => {
+    if (originalUrlRef.current) URL.revokeObjectURL(originalUrlRef.current);
+    if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
+  }, []);
+
   const handleFile = useCallback(async (f: File) => {
     if (!f.type.match(/audio\//) && !f.name.match(/\.(mp3|wav|flac|ogg|aac)$/i)) {
       setError("Please upload an MP3 or WAV file."); return;
     }
+    if (f.size > MAX_FILE_BYTES) {
+      setError("File is too large (max 250MB). Please upload a smaller file."); return;
+    }
     setLoadingAudio(true); setError(null); setResult(null); setAnalysis(null);
+    if (resultUrlRef.current) { URL.revokeObjectURL(resultUrlRef.current); resultUrlRef.current = null; }
     try {
       const ab = await f.arrayBuffer();
       const audioCtx = new AudioContext();
       const buffer = await audioCtx.decodeAudioData(ab);
       await audioCtx.close();
+      if (originalUrlRef.current) URL.revokeObjectURL(originalUrlRef.current);
       const url = URL.createObjectURL(new Blob([ab], { type: f.type }));
+      originalUrlRef.current = url;
       setFile(f); setAudioBuffer(buffer); setOriginalUrl(url);
       setMetadata((m: MetadataState) => ({ ...m, title: f.name.replace(/\.[^.]+$/, "") }));
       const hist = computeLoudnessHistory(buffer);
@@ -895,6 +909,7 @@ export default function MasteringClient() {
   const doMaster = async () => {
     if (!audioBuffer || !analysis) return;
     setError(null); setResult(null);
+    if (resultUrlRef.current) { URL.revokeObjectURL(resultUrlRef.current); resultUrlRef.current = null; }
     try {
       let r: MasterResult;
       if (preset === "djandyk_master") {
@@ -903,6 +918,7 @@ export default function MasteringClient() {
         const settings: Settings = { intensity, stereoWidth, noiseLevel, autoEQ, lowCut, highShelf, limiter, platform, eqBands };
         r = await masterAudio(audioBuffer, settings, { lufs: analysis.lufs, peak: analysis.peak, dr: analysis.dr }, setStage);
       }
+      resultUrlRef.current = r.url;
       setResult(r);
       const hist = computeLoudnessHistory(r.buffer);
       setLoudnessHistory(hist);
@@ -1120,7 +1136,11 @@ td:last-child{font-weight:600}
                 </button>
                 <span className="player-time">{fmt(mainTime)} / {fmt(audioBuffer!.duration)}</span>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => { setAudioBuffer(null); setFile(null); setOriginalUrl(null); setAnalysis(null); setResult(null); stopMain(); }}
+                <button onClick={() => {
+                  if (originalUrlRef.current) { URL.revokeObjectURL(originalUrlRef.current); originalUrlRef.current = null; }
+                  if (resultUrlRef.current) { URL.revokeObjectURL(resultUrlRef.current); resultUrlRef.current = null; }
+                  setAudioBuffer(null); setFile(null); setOriginalUrl(null); setAnalysis(null); setResult(null); stopMain();
+                }}
                   style={{ fontSize: 12, color: "var(--color-muted-2)", background: "none", border: "none", cursor: "pointer" }}>
                   ✕ Remove
                 </button>

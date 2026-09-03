@@ -100,6 +100,58 @@ export function paymentFailedHtml(): string {
   </tr>`);
 }
 
+// ── Template: Signup email confirmation ────────────────────────────────────────
+
+export function confirmSignupHtml(confirmUrl: string): string {
+  return wrap(`
+  <tr>
+    <td style="padding:48px 48px 56px;">
+      <p style="margin:0 0 20px;font-family:${MONO};font-size:10px;font-weight:700;color:#a3a3a3;letter-spacing:0.2em;text-transform:uppercase;">CONFIRM YOUR EMAIL</p>
+      <h1 style="margin:0 0 28px;font-family:${SANS};font-size:26px;font-weight:700;color:#111111;letter-spacing:-0.02em;line-height:1.25;">One last step</h1>
+      <p style="margin:0 0 28px;font-family:${SANS};font-size:15px;color:#111111;line-height:1.75;">
+        Confirm your email address to activate your Andy&rsquo;K Music Lab account and link any access you&rsquo;ve already paid for.
+      </p>
+      <a href="${confirmUrl}"
+         style="display:block;width:100%;box-sizing:border-box;padding:16px 24px;background:#111111;color:#ffffff;font-family:${MONO};font-size:11px;font-weight:700;text-decoration:none;letter-spacing:0.15em;text-transform:uppercase;text-align:center;">
+        CONFIRM EMAIL &rarr;
+      </a>
+      <p style="margin:24px 0 0;font-family:${SANS};font-size:12px;color:#a3a3a3;line-height:1.6;">
+        If you didn&rsquo;t create this account, you can safely ignore this email.
+      </p>
+    </td>
+  </tr>`);
+}
+
+// ── Template: Education access approved ────────────────────────────────────────
+
+export function educationApprovedHtml(planLabel: string): string {
+  return wrap(`
+  <tr>
+    <td style="padding:48px 48px 56px;">
+      <p style="margin:0 0 20px;font-family:${MONO};font-size:10px;font-weight:700;color:#a3a3a3;letter-spacing:0.2em;text-transform:uppercase;">EDUCATION ACCESS APPROVED</p>
+      <h1 style="margin:0 0 28px;font-family:${SANS};font-size:26px;font-weight:700;color:#111111;letter-spacing:-0.02em;line-height:1.25;">Your request has been approved</h1>
+      <p style="margin:0 0 28px;font-family:${SANS};font-size:15px;color:#111111;line-height:1.75;">
+        Your Limited Education Access request has been approved. You now have <strong>${planLabel}</strong> access to Andy&rsquo;K Music Lab.
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #111111;margin:0 0 28px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="margin:0 0 8px;font-family:${MONO};font-size:10px;font-weight:700;color:#a3a3a3;letter-spacing:0.2em;text-transform:uppercase;">Create Your Account</p>
+          <p style="margin:0 0 12px;font-family:${SANS};font-size:14px;color:#111111;line-height:1.65;">
+            Register (or sign in, if you already have an account) using <strong>the same email address</strong> this request was submitted with — your access will link automatically.
+          </p>
+          <a href="https://lab.djandykofficial.com/register" style="display:inline-block;padding:10px 20px;background:#111111;color:#ffffff;font-family:${MONO};font-size:11px;font-weight:700;text-decoration:none;letter-spacing:0.12em;text-transform:uppercase;">
+            CREATE ACCOUNT &rarr;
+          </a>
+        </td></tr>
+      </table>
+      <a href="https://lab.djandykofficial.com/login"
+         style="display:block;width:100%;box-sizing:border-box;padding:16px 24px;background:#111111;color:#ffffff;font-family:${MONO};font-size:11px;font-weight:700;text-decoration:none;letter-spacing:0.15em;text-transform:uppercase;text-align:center;">
+        SIGN IN &rarr;
+      </a>
+    </td>
+  </tr>`);
+}
+
 // ── Template 0: Payment success (triggered server-side after Revolut verify) ──
 
 export function paymentSuccessHtml(planLabel: string): string {

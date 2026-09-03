@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (secret !== process.env.CRON_SECRET) {
+  // Vercel Cron sends "Authorization: Bearer $CRON_SECRET" automatically when CRON_SECRET
+  // is set — it does not send a custom x-cron-secret header, so checking that header meant
+  // this endpoint 401'd on every scheduled run and the cron never actually did anything.
+  const auth = req.headers.get("Authorization");
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

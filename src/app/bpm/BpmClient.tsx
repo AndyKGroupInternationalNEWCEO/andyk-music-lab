@@ -325,10 +325,6 @@ export default function BpmClient() {
     try { return localStorage.getItem("andyk_lab_admin") === "true"; } catch { return false; }
   });
 
-  if (!isAdmin) {
-    if (typeof window !== "undefined") window.location.replace("/admin");
-    return null;
-  }
 
   const [file, setFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -410,6 +406,9 @@ export default function BpmClient() {
   const handleFile = useCallback((f: File) => {
     if (!f.type.match(/audio\/(mpeg|wav|mp3|x-wav|ogg|aac|flac)/) && !f.name.match(/\.(mp3|wav|ogg|flac|aac)$/i)) {
       setError("Please upload an MP3 or WAV file."); return;
+    }
+    if (f.size > 250 * 1024 * 1024) {
+      setError("File is too large (max 250MB). Please upload a smaller file."); return;
     }
     setFile(f); setResult(null); setError(null); setSelectedKey("");
     analyzeFile(f);

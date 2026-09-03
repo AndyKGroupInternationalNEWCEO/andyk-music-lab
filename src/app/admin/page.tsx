@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const ADMIN_KEY = "andyk_lab_admin";
-const _AE = "Y2VvQGFuZHlrZ3JvdXAuY29t";
-const _AP = "QU5EWUsyMDI2";
+const ADMIN_EMAIL = "ceo@andykgroup.com";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -20,20 +20,26 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
 
+    // Real admin authorization lives in Supabase Auth + the server-side requireAdmin()
+    // check on every /api/admin/* route (user.email === the admin account's email).
+    // There is no separate hardcoded credential here — a valid Supabase session for
+    // the admin account is both necessary and sufficient.
+    const supabase = createClient();
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
-    if (email === atob(_AE) && password === atob(_AP)) {
-      // Establish Supabase session so admin API routes can verify identity server-side
-      try {
-        const supabase = createClient();
-        await supabase.auth.signInWithPassword({ email, password });
-      } catch { /* non-critical — API will return 401 if session missing */ }
-      try { localStorage.setItem(ADMIN_KEY, "true"); } catch {}
-      router.push("/dashboard");
-    } else {
+    if (authError || !data.session || data.session.user.email !== ADMIN_EMAIL) {
+      if (data?.session) await supabase.auth.signOut(); // e.g. a real customer's own credentials
       setError("Invalid credentials");
       setPassword("");
       setLoading(false);
+      return;
     }
+
+    try { localStorage.setItem(ADMIN_KEY, "true"); } catch {}
+    router.push("/dashboard");
   };
 
   const inputStyle = (hasError: boolean): React.CSSProperties => ({
@@ -148,7 +154,7 @@ export default function AdminPage() {
         </form>
 
         <p style={{ marginTop: 24, fontSize: 11, color: "rgba(255,255,255,0.2)", textAlign: "center" }}>
-          <a href="/" style={{ color: "inherit", textDecoration: "none" }}>← Back to Lab</a>
+          <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>← Back to Lab</Link>
         </p>
       </div>
     </main>

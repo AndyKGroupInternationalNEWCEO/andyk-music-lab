@@ -10,11 +10,17 @@ export default function SuccessClient() {
   const [planName, setPlanName] = useState("your plan");
 
   useEffect(() => {
+    // localStorage (not sessionStorage) so this survives a closed/reopened tab or a
+    // redirect that lands in a fresh browsing context — the Revolut webhook is now the
+    // real source of truth for granting access either way (see webhook route), so this
+    // call is a best-effort fast path for sending the welcome email promptly, not the
+    // only way access gets linked.
     let orderId: string | null = null;
-    try { orderId = sessionStorage.getItem("andyk_order_id"); } catch { /* ignore */ }
+    try { orderId = localStorage.getItem("andyk_order_id"); } catch { /* ignore */ }
 
     if (!orderId) {
-      // Direct visit or page reload — show success UI without verification
+      // Direct visit, reload after cleanup, or lost storage — show success UI without
+      // re-verification; the webhook has already (or will already) grant access.
       setState("success");
       return;
     }
@@ -29,7 +35,7 @@ export default function SuccessClient() {
         if (data.plan_name) setPlanName(data.plan_name);
         setState(data.ok ? "success" : "error");
         if (data.ok) {
-          try { sessionStorage.removeItem("andyk_order_id"); } catch { /* ignore */ }
+          try { localStorage.removeItem("andyk_order_id"); } catch { /* ignore */ }
         }
       })
       .catch(() => setState("error"));
@@ -59,12 +65,12 @@ export default function SuccessClient() {
           <a href="mailto:ceo@andykgroup.com" style={{ color: "#111111" }}>ceo@andykgroup.com</a>{" "}
           and we will activate your account manually.
         </p>
-        <a
+        <Link
           href="/#pricing"
           style={{ display: "inline-block", padding: "12px 28px", background: "#111111", color: "#ffffff", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", textDecoration: "none" }}
         >
           Back to Pricing →
-        </a>
+        </Link>
       </div>
     );
   }

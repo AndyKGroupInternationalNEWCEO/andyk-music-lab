@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { paymentSuccessHtml } from "@/lib/email";
+import { PLAN_LABELS } from "@/lib/access";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const FROM = "noreply@andykgroup.com";
-
-const PLAN_LABELS: Record<string, string> = {
-  single:          "Single Session",
-  studio:          "Studio Pass",
-  pro:             "Pro Pass",
-  tool_mastering:  "Mastering Tool",
-  tool_bpm:        "BPM + Key Detector",
-  tool_planner:    "DJ Set Planner",
-  tool_comparator: "Track Comparator",
-  tool_chord:      "Chord Generator",
-  tool_metronome:  "Metronome",
-  tool_loudness:   "Loudness Meter",
-  tool_stems:      "Stem Splitter",
-};
 
 function sbHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -127,17 +114,11 @@ export async function POST(req: NextRequest) {
 
   const emailLower = email.trim().toLowerCase();
 
-  // 5. Dedup — check waitlist and pending_access to avoid double-sending
-  const [waitlistRes, pendingRes] = await Promise.all([
-    fetch(
-      `${SUPABASE_URL}/rest/v1/waitlist?email=eq.${encodeURIComponent(emailLower)}&select=id,paid_email_sent&limit=1`,
-      { headers: sbHeaders(), cache: "no-store" }
-    ),
-    fetch(
-      `${SUPABASE_URL}/rest/v1/pending_access?order_id=eq.${encodeURIComponent(order_id)}&select=id,status&limit=1`,
-      { headers: sbHeaders(), cache: "no-store" }
-    ),
-  ]);
+  // 5. Dedup — check waitlist to avoid double-sending
+  const waitlistRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/waitlist?email=eq.${encodeURIComponent(emailLower)}&select=id,paid_email_sent&limit=1`,
+    { headers: sbHeaders(), cache: "no-store" }
+  );
 
   const waitlistRows: { id: string; paid_email_sent: boolean }[] = waitlistRes.ok ? await waitlistRes.json() : [];
   if (waitlistRows.length > 0 && waitlistRows[0].paid_email_sent) {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Payment Unsuccessful — Andy'K Music Lab",
@@ -81,7 +82,7 @@ export default function PaymentFailedPage() {
 
         {/* CTAs */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 48 }}>
-          <a
+          <Link
             href="/#pricing"
             style={{
               display: "inline-block",
@@ -98,7 +99,7 @@ export default function PaymentFailedPage() {
             }}
           >
             Try Again →
-          </a>
+          </Link>
           <a
             href="mailto:ceo@andykgroup.com"
             style={{

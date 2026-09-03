@@ -11,7 +11,6 @@ const S = { mono: { fontFamily: "var(--font-mono)", letterSpacing: "0.08em", tex
 
 export default function MetronomeClient() {
   const [isAdmin] = useState(() => { if (typeof window==="undefined") return false; try { return localStorage.getItem("andyk_lab_admin")==="true"; } catch { return false; } });
-  if (!isAdmin) { if (typeof window!=="undefined") window.location.replace("/admin"); return null; }
 
   const [bpm, setBpm] = useState(120);
   const [playing, setPlaying] = useState(false);
@@ -28,6 +27,7 @@ export default function MetronomeClient() {
   const bpmRef = useRef(bpm);
   const timeSigRef = useRef(timeSig);
   const subdivRef = useRef(subdivision);
+  const uiTimeoutsRef = useRef<number[]>([]);
 
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { timeSigRef.current = timeSig; }, [timeSig]);
@@ -44,10 +44,20 @@ export default function MetronomeClient() {
     env.gain.setValueAtTime(isAccent ? 0.8 : 0.5, time);
     env.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
     osc.start(time); osc.stop(time + 0.06);
-    // Schedule UI beat indicator
+    // Schedule UI beat indicator — tracked so stop() can cancel any still-pending pulses
     const delay = Math.max(0, (time - ctx.currentTime) * 1000);
-    setTimeout(() => { setCurrentBeat(beat % totalBeats); setPulse(true); setTimeout(() => setPulse(false), 80); }, delay);
+    const id = window.setTimeout(() => {
+      setCurrentBeat(beat % totalBeats); setPulse(true);
+      const offId = window.setTimeout(() => setPulse(false), 80);
+      uiTimeoutsRef.current.push(offId);
+    }, delay);
+    uiTimeoutsRef.current.push(id);
   }, []);
+
+  // schedulerRef holds the latest scheduler so the recursive setTimeout below never
+  // captures a stale self-reference (fixes react-hooks/immutability: "scheduler
+  // accessed before it is declared").
+  const schedulerRef = useRef<() => void>(() => {});
 
   const scheduler = useCallback(() => {
     const ctx = audioCtxRef.current!;
@@ -58,8 +68,10 @@ export default function MetronomeClient() {
       beatRef.current++;
       nextNoteRef.current += secPerBeat;
     }
-    timerRef.current = window.setTimeout(scheduler, 25);
+    timerRef.current = window.setTimeout(() => schedulerRef.current(), 25);
   }, [scheduleClick]);
+
+  useEffect(() => { schedulerRef.current = scheduler; }, [scheduler]);
 
   const start = useCallback(() => {
     const ctx = new AudioContext();
@@ -72,6 +84,8 @@ export default function MetronomeClient() {
 
   const stop = useCallback(() => {
     clearTimeout(timerRef.current);
+    uiTimeoutsRef.current.forEach(clearTimeout);
+    uiTimeoutsRef.current = [];
     audioCtxRef.current?.close();
     audioCtxRef.current = null;
     setPlaying(false);
@@ -79,7 +93,11 @@ export default function MetronomeClient() {
     setPulse(false);
   }, []);
 
-  useEffect(() => { return () => { clearTimeout(timerRef.current); audioCtxRef.current?.close(); }; }, []);
+  useEffect(() => { return () => {
+    clearTimeout(timerRef.current);
+    uiTimeoutsRef.current.forEach(clearTimeout);
+    audioCtxRef.current?.close();
+  }; }, []);
 
   const tap = () => {
     const now = Date.now();
@@ -112,7 +130,7 @@ export default function MetronomeClient() {
               <span className="head-word-bold">Metro</span>
               <span className="head-word-serif serif-accent">nome</span>
             </h1>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>
+            {isAdmin && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>}
           </div>
           <p style={{ fontSize: 14, color: "var(--color-muted)", lineHeight: 1.65 }}>Precise Web Audio API metronome with tap tempo, time signatures, and subdivisions.</p>
         </div>

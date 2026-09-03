@@ -101,7 +101,6 @@ const S = { label: { fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing
 
 export default function TrackComparatorClient() {
   const [isAdmin] = useState(() => { if (typeof window==="undefined") return false; try { return localStorage.getItem("andyk_lab_admin")==="true"; } catch { return false; } });
-  if (!isAdmin) { if (typeof window!=="undefined") window.location.replace("/admin"); return null; }
 
   const [fileA, setFileA] = useState<File|null>(null);
   const [fileB, setFileB] = useState<File|null>(null);
@@ -111,6 +110,18 @@ export default function TrackComparatorClient() {
   const [error, setError] = useState<string|null>(null);
   const refA = useRef<HTMLInputElement>(null);
   const refB = useRef<HTMLInputElement>(null);
+
+  const pickFile = (label: "A" | "B", f: File) => {
+    if (!f.type.match(/audio\//) && !f.name.match(/\.(mp3|wav|flac|ogg|aac|m4a)$/i)) {
+      setError("Please upload an MP3, WAV, FLAC, OGG, AAC or M4A file."); return;
+    }
+    if (f.size > 250 * 1024 * 1024) {
+      setError("File is too large (max 250MB). Please upload a smaller file."); return;
+    }
+    setError(null);
+    if (label === "A") setFileA(f); else setFileB(f);
+    setStatsA(null); setStatsB(null);
+  };
 
   const compare = useCallback(async () => {
     if (!fileA || !fileB) return;
@@ -163,7 +174,7 @@ export default function TrackComparatorClient() {
               <span className="head-word-serif serif-accent">Track</span>{" "}
               <span className="head-word-bold">Comparator</span>
             </h1>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>
+            {isAdmin && <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 100, background: "#111111", color: "#ffffff", fontWeight: 700 }}>Admin ✓</span>}
           </div>
           <p style={{ fontSize: 14, color: "var(--color-muted)", lineHeight: 1.65, maxWidth: 520 }}>Upload two tracks. Compare loudness, dynamics, BPM, key, and Camelot side-by-side — entirely in your browser.</p>
         </div>
@@ -181,12 +192,12 @@ export default function TrackComparatorClient() {
                 style={{ minHeight: 140 }}
                 onClick={() => ref.current?.click()}>
                 <input ref={ref} type="file" accept="audio/*,.mp3,.wav" className="hidden"
-                  onChange={e => { const f=e.target.files?.[0]; if (f) { label==="A" ? setFileA(f) : setFileB(f); setStatsA(null); setStatsB(null); } }} />
+                  onChange={e => { const f=e.target.files?.[0]; if (f) pickFile(label, f); }} />
                 {file ? (
                   <div className="w-full text-left">
                     <div style={{ ...S.label, marginBottom: 6 }}>Track {label}</div>
                     <div style={{ fontWeight: 600, fontSize: 13, color: "var(--color-foreground)" }} className="truncate">{file.name}</div>
-                    <button onClick={e=>{ e.stopPropagation(); label==="A"?setFileA(null):setFileB(null); setStatsA(null);setStatsB(null); }}
+                    <button onClick={e=>{ e.stopPropagation(); if (label==="A") setFileA(null); else setFileB(null); setStatsA(null);setStatsB(null); }}
                       style={{ fontSize: 11, color: "var(--color-muted-2)", marginTop: 4, background: "none", border: "none", cursor: "pointer" }}>✕ Remove</button>
                   </div>
                 ) : (

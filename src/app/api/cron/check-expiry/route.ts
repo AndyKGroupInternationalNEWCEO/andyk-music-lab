@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { expiryWarningHtml, expiryHtml } from "@/lib/email";
+import { PLAN_LABELS } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const FROM         = "noreply@andykgroup.com";
-
-const PLAN_LABELS: Record<string, string> = {
-  single:          "Single Session",
-  studio:          "Studio Pass",
-  pro:             "Pro Pass",
-  tool_mastering:  "Mastering Tool",
-  tool_bpm:        "BPM + Key Detector",
-  tool_planner:    "DJ Set Planner",
-  tool_comparator: "Track Comparator",
-  tool_chord:      "Chord Generator",
-  tool_metronome:  "Metronome",
-  tool_loudness:   "Loudness Meter",
-  tool_stems:      "Stem Splitter",
-};
 
 function sbHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;

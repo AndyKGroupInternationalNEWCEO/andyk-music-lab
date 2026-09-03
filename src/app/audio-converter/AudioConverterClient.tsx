@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import HowItWorks from "@/components/HowItWorks";
 import { Mp3Encoder } from "lamejs";
 
@@ -95,13 +95,23 @@ export default function AudioConverterClient() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const downloadUrlRef = useRef<string | null>(null);
+  useEffect(() => { downloadUrlRef.current = downloadUrl; }, [downloadUrl]);
+
+  // Revoke any outstanding converted-file blob URL on unmount
+  useEffect(() => () => { if (downloadUrlRef.current) URL.revokeObjectURL(downloadUrlRef.current); }, []);
 
   const mono: React.CSSProperties = { fontFamily: "var(--font-mono)" };
   const label10: React.CSSProperties = { ...mono, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: "var(--color-muted-2)", margin: 0 };
 
+  const clearDownloadUrl = () => {
+    if (downloadUrlRef.current) URL.revokeObjectURL(downloadUrlRef.current);
+    setDownloadUrl(null);
+  };
+
   const reset = () => {
     setFileInfo(null);
-    setDownloadUrl(null);
+    clearDownloadUrl();
     setDownloadName("");
     setError(null);
     setOutputFormat("wav");
@@ -110,7 +120,7 @@ export default function AudioConverterClient() {
 
   const handleFile = useCallback(async (f: File) => {
     setError(null);
-    setDownloadUrl(null);
+    clearDownloadUrl();
     setFileInfo(null);
     if (f.size > 250 * 1024 * 1024) {
       setError("File is too large (max 250 MB). Use a desktop DAW for larger files.");
@@ -144,7 +154,7 @@ export default function AudioConverterClient() {
   const convert = async () => {
     if (!fileInfo) return;
     setError(null);
-    setDownloadUrl(null);
+    clearDownloadUrl();
     setStage("Encoding…");
     try {
       let blob: Blob;
