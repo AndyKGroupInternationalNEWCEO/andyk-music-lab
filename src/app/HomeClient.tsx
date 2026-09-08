@@ -519,6 +519,24 @@ export default function HomeClient() {
           >
             View the Competition →
           </a>
+          <div style={{ marginTop: 16 }}>
+            <a
+              href="https://www.djandykofficial.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "#737373",
+                textDecoration: "none",
+              }}
+            >
+              More About DJ Andy&apos;K →
+            </a>
+          </div>
         </div>
       </section>
 
