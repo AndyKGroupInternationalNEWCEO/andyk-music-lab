@@ -492,7 +492,19 @@ export default function HomeClient() {
           >
             Competition
           </p>
-          <h2 style={{ fontFamily: "var(--font-sans, sans-serif)", fontSize: "clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem)", fontWeight: 700, letterSpacing: "-0.02em", color: "#111111", margin: "0 0 8px" }}>
+          <h2
+            style={{
+              fontFamily: "var(--font-sans, sans-serif)",
+              fontSize: "clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem)",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              margin: "0 0 8px",
+              backgroundImage: "linear-gradient(90deg, #c026d3 0%, #7c3aed 35%, #4f46e5 65%, #06b6d4 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
             This Is My Choice
           </h2>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", margin: "0 0 20px" }}>
