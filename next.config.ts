@@ -13,6 +13,20 @@ const nextConfig: NextConfig = {
       { source: "/(.*)", headers: SECURITY_HEADERS },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/this-is-my-choice",
+        destination: "https://www.djandykofficial.com/this-is-my-choice",
+        permanent: true,
+      },
+      {
+        source: "/this-is-my-choice/rules",
+        destination: "https://www.djandykofficial.com/this-is-my-choice/rules",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

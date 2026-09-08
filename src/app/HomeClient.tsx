@@ -466,6 +466,62 @@ export default function HomeClient() {
 
       <div className="divider-glow" />
 
+      {/* ── THIS IS MY CHOICE — campaign card ── */}
+      <section className="section-surface py-16 px-6">
+        <div
+          style={{
+            maxWidth: 760,
+            margin: "0 auto",
+            textAlign: "center",
+            padding: "48px 32px",
+            background: "#ffffff",
+            border: "1px solid rgba(0,0,0,0.1)",
+            borderRadius: 16,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "#a3a3a3",
+              margin: "0 0 16px",
+            }}
+          >
+            Competition
+          </p>
+          <h2 style={{ fontFamily: "var(--font-sans, sans-serif)", fontSize: "clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem)", fontWeight: 700, letterSpacing: "-0.02em", color: "#111111", margin: "0 0 8px" }}>
+            This Is My Choice
+          </h2>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", margin: "0 0 20px" }}>
+            by DJ Andy&apos;K
+          </p>
+          <p style={{ fontFamily: "var(--font-sans, sans-serif)", fontSize: 15, color: "#525252", lineHeight: 1.6, margin: "0 auto 28px", maxWidth: 480 }}>
+            Choose a DJ Andy&apos;K track and compete for Lifetime Unlimited Access to Andy&apos;K Music Lab.
+          </p>
+          <a
+            href="https://www.djandykofficial.com/this-is-my-choice"
+            style={{
+              display: "inline-block",
+              padding: "14px 28px",
+              background: "#111111",
+              color: "#ffffff",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              textDecoration: "none",
+              border: "none",
+            }}
+          >
+            View the Competition →
+          </a>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ── */}
       <section className="section-dark py-28 px-6">
         <div className="max-w-6xl mx-auto">
