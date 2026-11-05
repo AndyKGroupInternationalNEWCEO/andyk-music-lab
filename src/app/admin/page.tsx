@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,13 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // "Log out" in the Marketing Studio lands here with ?logout=1: end the LAB admin session as well.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("logout") !== "1") return;
+    createClient().auth.signOut().catch(() => {});
+    try { localStorage.removeItem(ADMIN_KEY); } catch {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
