@@ -412,6 +412,23 @@ export default function DashboardPage() {
 
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 32px" }}>
 
+        {/* ── Marketing ── */}
+        <p style={{ ...sectionLabel }}>Marketing</p>
+        <a
+          href="/admin/marketing"
+          style={{ display: "block", padding: "20px 22px", border: "1px solid #111111", textDecoration: "none", background: "#ffffff", marginBottom: 56 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#f5f5f5"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#ffffff"; }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#111111" }}>Marketing Studio</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111111" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+          <p style={{ fontFamily: sans, fontSize: 12, color: "#737373", lineHeight: 1.5, margin: 0 }}>
+            AI Marketing Director for @andykmusiclab: calendar, approvals, content library, Instagram, PR &amp; media, automation. Opens with your admin session.
+          </p>
+        </a>
+
         {/* ── Internal Tools ── */}
         <p style={{ ...sectionLabel }}>Internal Tools</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 0, background: "#e5e5e5", border: "1px solid #e5e5e5", marginBottom: 56 }}>
