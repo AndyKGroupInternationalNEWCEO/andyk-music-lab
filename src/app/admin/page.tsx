@@ -39,7 +39,9 @@ export default function AdminPage() {
     }
 
     try { localStorage.setItem(ADMIN_KEY, "true"); } catch {}
-    router.push("/dashboard");
+    // Back to the Marketing Studio page that sent here, if any (same-site path only).
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(next && (next === "/admin/marketing" || next.startsWith("/admin/marketing/")) ? next : "/dashboard");
   };
 
   const inputStyle = (hasError: boolean): React.CSSProperties => ({

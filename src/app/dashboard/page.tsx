@@ -249,6 +249,8 @@ export default function DashboardPage() {
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch { /* ignore */ }
+    // Also end the Marketing Studio session (it was opened with this admin login).
+    await fetch("/admin/marketing/api/auth/logout", { cache: "no-store" }).catch(() => {});
     try { localStorage.removeItem(ADMIN_KEY); } catch {}
     router.replace("/admin");
   }
