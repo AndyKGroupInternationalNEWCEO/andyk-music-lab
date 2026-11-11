@@ -292,6 +292,21 @@ body {
 .footer-copy { font-size: 11px; color: var(--color-muted-2); font-family: var(--font-mono); letter-spacing: 0.06em; opacity: 0.6; }
 .footer-link { font-size: 13px; color: var(--color-muted); transition: color 0.2s ease; }
 .footer-link:hover { color: #111111; }
+
+/* Touch targets: on touch screens, grow the tappable area of small links and buttons to at least 44×44px without
+   changing how they look (as on djandykofficial.com). */
+@media (pointer: coarse) {
+  .tap, .footer-link { position: relative; }
+  .tap::after, .footer-link::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
 .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-top: 24px; }
 
 /* ===== SCROLL REVEAL ===== */

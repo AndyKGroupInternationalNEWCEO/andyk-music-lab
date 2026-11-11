@@ -762,6 +762,7 @@ export default function HomeClient() {
               href="https://djandykofficial.com"
               target="_blank"
               rel="noopener noreferrer"
+              className="tap"
               style={{
                 display: "inline-flex", alignItems: "center",
                 fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700,
@@ -1030,6 +1031,7 @@ export default function HomeClient() {
             </div>
             <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#a3a3a3", margin: "8px 0 0" }}>
               <button
+                className="tap"
                 onClick={() => openWaitlist("studio")}
                 style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", color: "#a3a3a3", textDecoration: "underline" }}
               >
